@@ -163,7 +163,6 @@ object Main {
   }
 
   // ========== Recursive Evaluator where Environment is a Function =============
-
   type Env = String => Option[Data]
   val recEnv : Env = ((id:String) => funEnv.get(id)) 
   def updateEnv(env : Env, bindings : List[(String,Data)]) : Env = bindings match {
@@ -179,6 +178,7 @@ object Main {
     )
     newEnv
   }  
+
   def evalRec(x: Data, env: Env): Data = {
     x match {
       case i: Int => i
@@ -206,6 +206,7 @@ object Main {
       }
     }
   }
+
   
   	// =================== Final Interpreter ============================= 
   
@@ -222,7 +223,6 @@ object Main {
   }
 
   // We wrap lambdas inside a case class
-  
   case class Lambda(f: List[Data] => Data)
 
   // Environments -------------------------------------------------------
@@ -328,8 +328,10 @@ object Main {
       }
   }
 
+
   def mkLambda(ps: List[String], body: Data, env: Environment) =
     Lambda { args => eval(body, env.extendMulti(ps, args)) }
+
 
   def apply(f: Data, args: List[Data]) = f match {
     case Lambda(f) =>
@@ -354,17 +356,17 @@ object Main {
     curexp = prevexp
     result
   }
-
   // Diagnostics---------------------------------------------------
   var curexp: Data = null
-  var trace: Boolean = true // set trace to false to turn off tracing
+  var trace: Boolean = false // set trace to false to turn off tracing
   var indent: Int = 0
   val indentString =
     "                                                              "
   def evaluate(x: Data): Data = eval(x, globalEnv)
   def evaluate(s: String): Data = evaluate(string2lisp(s))
-
   def main(args: Array[String]): Unit = {
-
   }
 }
+import Main._
+indent
+eval(string2lisp("((lambda (x) (+ x 5)) 42)"), globalEnv)
