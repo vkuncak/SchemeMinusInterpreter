@@ -26,6 +26,7 @@ object Main {
 
   // ============================ Parser ===============================
 
+  def s2l(s:String) = string2lisp(s) // shorthand
   def string2lisp(s: String): Data = {
     val it = new LispTokenizer(s)
     def parseExpr(token: String): Data = {
@@ -372,7 +373,68 @@ object Main {
 }
 
 import Main._
+// Examples for parsing and in general
 string2lisp("(lambda (x) (+ (* x x) 1))")
 eval(string2lisp("((lambda (x) (+ (* x x) 1)) 7)"), globalEnv)
 evaluate("(def factorial (lambda (x) (if (= x 0) 1 (* x (factorial (- x 1))))) (factorial 6))")
 evaluate("(def map (lambda (f l) (if (null? l) nil (cons (f (car l)) (map f (cdr l))))) (map (lambda (x) (* x x)) (cons 1 (cons 2 (cons 3 nil)))))")
+
+// Interpreting: from simpler to more complex interpreter
+// 1. exprEval - expressions with constants
+evalExpr(s2l("(+ 41 (* 2 11))"))
+
+// 2. exprSym - expressions with symbols and the environment
+evalSym(s2l("(+ 41 (* 2 q))"), Map("q" -> 10))
+
+// 3. exprFun - evaluating function application
+evalFun(List('=, 30, List('*, 2, 'q)), funEnv + ("q" -> 15))
+
+// 4. evalLambda - creating lambda expressions 
+evalLambda(string2lisp("((lambda (x) (+ x x)) (* 3 z))"), funEnv + ("z" -> 15))
+
+// 5. allowing val - non-recursive definitions
+evalVal(s2l("(val answer (+ 12 q) (+ answer answer))"), funEnv + ("q" -> 30))
+
+evalLambda(s2l("(val dup (lambda (x) (+ x x)) (dup (dup 7)))"),funEnv)
+
+evalLambda(s2l(
+"""
+(val dup1 (lambda (x) (if (= x 10) 100 (+ x x)))
+	(dup1 (dup1 10))
+)
+"""), funEnv)
+
+evalLambda(s2l("""
+  (val fact (lambda (n)
+     ((lambda (fact)
+        (fact fact n))
+      (lambda (ft x)
+      	(if  (= x 0) 1 (* x (ft ft (- x 1)))))
+     ))
+     (fact 6)
+  )
+"""), funEnv)
+
+evalLambda(s2l("""
+(val mkZ (lambda (f)
+    (val comb (lambda (x)
+    		(f (lambda (v)
+    			   ((x x) v)
+    			  )
+    		 )
+    )
+    (comb comb)
+  )
+  )
+  (val factorial 
+      (lambda (fact) (lambda (x)
+        (if  (= x 0) 
+             1 
+            (* x (fact (- x 1))))))
+  ((mkZ factorial) 6)))
+"""), funEnv)
+
+
+
+
+
