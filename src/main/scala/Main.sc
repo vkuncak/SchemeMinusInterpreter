@@ -1,10 +1,8 @@
 
-
 object Main {
   type Data = Any
 
-
-  // =================== Tokenizer (Lexer) ===============================
+  // =================== Tokenizer (Lexer) ================
   
   class LispTokenizer(s: String) extends Iterator[String] {
     private var i = 0
@@ -24,7 +22,7 @@ object Main {
       } else sys.error("premature end of input")
   }
 
-  // ============================ Parser ===============================
+  // ============================ Parser ==================
 
   def s2l(s:String) = string2lisp(s) // shorthand
   def string2lisp(s: String): Data = {
@@ -52,12 +50,13 @@ object Main {
       x.toString
   }
 
-  // ==============Simple evaluators for explanation only ================
+  // ========= Simple evaluators for explanation only ======
   
   def evalExpr(x: Data): Data = {
     x match {
       case i: Int => i
-      case List('+, arg1, arg2) => (evalExpr(arg1), evalExpr(arg2)) match {
+      case List('+, arg1, arg2) => (evalExpr(arg1), 
+                                   evalExpr(arg2)) match {
         case (x1: Int, x2: Int) => x1 + x2
         case (v1, v2)           => sys.error("+ takes two integers, but was invoked with " + v1 + " and " + v2)
       }
@@ -102,26 +101,26 @@ object Main {
       }
     }
   }
-  val funEnv : Map[String,Data] = {
-    val plus = (args: List[Data]) => args match {
-      case List(x: Int, y: Int) => x + y
-      case _                    => sys.error("plus expects two integers, applied to " + args)
-    }
-    val times = (args: List[Data]) => args match {
-      case List(x: Int, y: Int) => x * y
-      case _                    => sys.error("times expects two integers, applied to " + args)
-    }
-    val minus = (args: List[Data]) => args match {
-      case List(x: Int, y: Int) => x - y
-      case _                    => sys.error("minus expects two integers, applied to " + args)
-    }
-    val equality = (args: List[Data]) => args match {
-      case List(x, y) => if (x == y) 1 else 0
-      case _          => sys.error("minus expects two values, applied to " + args)
-    }
 
-    Map("+" -> plus, "*" -> times, "-" -> minus, "=" -> equality)
+  val plus = (args: List[Data]) => args match {
+    case List(x: Int, y: Int) => x + y
+    case _                    => sys.error("plus expects two integers, applied to " + args)
   }
+  val times = (args: List[Data]) => args match {
+    case List(x: Int, y: Int) => x * y
+    case _                    => sys.error("times expects two integers, applied to " + args)
+  }
+  val minus = (args: List[Data]) => args match {
+    case List(x: Int, y: Int) => x - y
+    case _                    => sys.error("minus expects two integers, applied to " + args)
+  }
+  val equality = (args: List[Data]) => args match {
+    case List(x, y) => if (x == y) 1 else 0
+    case _          => sys.error("minus expects two values, applied to " + args)
+  }
+
+  val funEnv : Map[String,Data] = 
+    Map("+" -> plus, "*" -> times, "-" -> minus, "=" -> equality)
 
   def evalVal(x: Data, env: Map[String, Data]): Data = {
     x match {
@@ -166,7 +165,8 @@ object Main {
     }
   }
 
-  // ========== Recursive Evaluator where Environment is a Function =============
+  // = Recursive Evaluator where Environment is a Function =
+
   type Env = String => Option[Data]
   val recEnv : Env = ((id:String) => funEnv.get(id)) 
   def updateEnv(env : Env, bindings : List[(String,Data)]) : Env = bindings match {
@@ -210,190 +210,34 @@ object Main {
       }
     }
   }
-
   
-  	// =================== Final Interpreter ============================= 
-  
-    // Checked conversions ----------- -----------------------------------
-
-  def asList(x: Data): List[Data] = x match {
-    case xs: List[_] => xs
-    case _           => sys.error("malformed list: " + x)
-  }
-
-  def paramName(x: Data): String = x match {
-    case Symbol(name) => name
-    case _            => sys.error("malformed parameter")
-  }
-
-  // We wrap lambdas inside a case class
-  case class Lambda(f: List[Data] => Data)
-
-  // Environments -------------------------------------------------------
-
-  abstract class Environment {
-    def lookup(n: String): Data
-    def extend(name: String, v: Data) = new Environment {
-      def lookup(n: String): Data =
-        if (n == name) v else Environment.this.lookup(n)
+  def handle(e: => Any) = {
+    try (e) catch {
+        case _ => "Error during evaluation"
     }
-    def extendMulti(ps: List[String], vs: List[Data]): Environment = (ps, vs) match {
-      case (List(), List())         => this
-      case (p :: ps1, arg :: args1) => extend(p, arg).extendMulti(ps1, args1)
-      case _                        => sys.error("wrong number of arguments")
-    }
-    def extendRec(name: String, expr: Environment => Data) = new Environment {
-      def lookup(n: String): Data =
-        if (n == name) expr(this)
-        else Environment.this.lookup(n)
-    }
-  }
-  object EmptyEnvironment extends Environment {
-    def lookup(n: String): Data = sys.error("undefined: " + n)
-  }
-
-  var globalEnv = EmptyEnvironment
-    .extend("=", Lambda(args => (args: @unchecked) match {
-      case List(arg1, arg2) => if (arg1 == arg2) 1 else 0
-    }))
-
-    .extend("+", Lambda(args => (args: @unchecked) match {
-      case List(arg1: Int, arg2: Int) => arg1 + arg2
-    }))
-    .extend("-", Lambda(args => (args: @unchecked) match {
-      case List(arg1: Int, arg2: Int) => arg1 - arg2
-    }))
-
-    .extend("*", Lambda(args => (args: @unchecked) match {
-      case List(arg1: Int, arg2: Int) => arg1 * arg2
-    }))
-    .extend("/", Lambda(args => (args: @unchecked) match {
-      case List(arg1: Int, arg2: Int) => arg1 / arg2
-    }))
-
-    .extend("nil", Nil)
-    .extend("cons", Lambda(args => (args: @unchecked) match {
-      case List(arg1, arg2) => arg1 :: asList(arg2)
-    }))
-
-    .extend("car", Lambda(args => (args: @unchecked) match {
-      case List(x :: xs) => x
-    }))
-    .extend("cdr", Lambda(args => (args: @unchecked) match {
-      case List(x :: xs) => xs
-    }))
-
-    .extend("null?", Lambda(args => args match {
-      case List(Nil) => 1
-      case _         => 0
-    }))
-
-  def eval1(x: Data, env: Environment): Data = x match {
-    case _: Int =>
-      x
-    case Symbol(name) =>
-      env lookup name
-    case 'val :: Symbol(name) :: expr :: rest :: Nil =>
-      eval(rest, env.extend(name, eval(expr, env)))
-    case 'if :: cond :: thenpart :: elsepart :: Nil =>
-      if (eval(cond, env) != 0) eval(thenpart, env)
-      else eval(elsepart, env)
-
-    // syntactic sugar
-
-    case 'and :: x :: y :: Nil =>
-      eval('if :: x :: y :: 0 :: Nil, env)
-    case 'or :: x :: y :: Nil =>
-      eval('if :: x :: 1 :: y :: Nil, env)
-
-    // def, quote, lambda and application
-
-   	/* This version of def permanentaly modifies globalEnv
-       if invoked from the top level */
-    case 'def :: Symbol(name) :: body :: Nil => // definition GLOBAL
-      if (env == globalEnv) {
-        globalEnv = env.extendRec(name, env1 => eval(body, env1))
-        "def " + name // just confirm we got the def
-      } else
-        sys.error("trying to add global definition in some inner scope")
-    case 'def :: Symbol(name) :: body :: rest :: Nil => // GLOBAL or LOCAL
-      if (env == globalEnv)
-        globalEnv = env.extendRec(name, env1 => eval(body, env1))
-      eval(rest, env.extendRec(name, env1 => eval(body, env1))) // evaluate
-    case 'quote :: y :: Nil =>
-      y
-    case 'lambda :: params :: body :: Nil =>
-      mkLambda(asList(params) map paramName, body, env)
-    case operator :: operands =>
-      try {
-        apply(eval(operator, env), operands map (x => eval(x, env)))
-      } catch {
-        case ex: MatchError => sys.error("bad arguments for function " + operator)
-      }
-  }
-
-
-  def mkLambda(ps: List[String], body: Data, env: Environment) =
-    Lambda { args => eval(body, env.extendMulti(ps, args)) }
-
-
-  def apply(f: Data, args: List[Data]) = f match {
-    case Lambda(f) =>
-      f(args)
-    case _ =>
-      sys.error("application of non-function " + f + " to arguments " + args)
-  }
-
-  // Evaluation with tracing
-  def eval(x: Data, env: Environment): Data = {
-    val prevexp = curexp
-    curexp = x
-    if (trace) {
-      println(indentString.substring(0, indent) + "===> " + x)
-      indent += 1
-    }
-    val result = eval1(x, env)
-    if (trace) {
-      indent -= 1
-      println(indentString.substring(0, indent) + "<=== " + result)
-    }
-    curexp = prevexp
-    result
-  }
-  // Diagnostics---------------------------------------------------
-  var curexp: Data = null
-  var trace: Boolean = false // set trace to false to turn off tracing
-  var indent: Int = 0
-  val indentString =
-    "                                                              "
-  def evaluate(x: Data): Data = eval(x, globalEnv)
-  def evaluate(s: String): Data = evaluate(string2lisp(s))
-  def main(args: Array[String]): Unit = {
   }
 }
-
 import Main._
-// Examples for parsing and in general
+
+// Example for parsing
 string2lisp("(lambda (x) (+ (* x x) 1))")
-eval(string2lisp("((lambda (x) (+ (* x x) 1)) 7)"), globalEnv)
-evaluate("(def factorial (lambda (x) (if (= x 0) 1 (* x (factorial (- x 1))))) (factorial 6))")
-evaluate("(def map (lambda (f l) (if (null? l) nil (cons (f (car l)) (map f (cdr l))))) (map (lambda (x) (* x x)) (cons 1 (cons 2 (cons 3 nil)))))")
 
 // Interpreting: from simpler to more complex interpreter
-// 1. exprEval - expressions with constants
-evalExpr(s2l("(+ 41 (* 2 11))"))
 
-// 2. exprSym - expressions with symbols and the environment
+// 1. evalExpr - expressions with constants
+evalExpr(s2l("(+ 7 (* 2 5))"))
+
+// 2. evalSym - expressions with symbols and the environment
 evalSym(s2l("(+ 41 (* 2 q))"), Map("q" -> 10))
 
-// 3. exprFun - evaluating function application
+// 3. evalFun - evaluating function application
 evalFun(List('=, 30, List('*, 2, 'q)), funEnv + ("q" -> 15))
 
-// 4. evalLambda - creating lambda expressions 
-evalLambda(string2lisp("((lambda (x) (+ x x)) (* 3 z))"), funEnv + ("z" -> 15))
+// 4. evalVal - allowing val (non-recursive) definitions
+evalVal(s2l("(val answer (+ 12 q) (* answer answer))"), funEnv + ("q" -> 30))
 
-// 5. allowing val - non-recursive definitions
-evalVal(s2l("(val answer (+ 12 q) (+ answer answer))"), funEnv + ("q" -> 30))
+// 5. evalLambda - creating lambda expressions 
+evalLambda(string2lisp("((lambda (x) (+ x x)) (* 3 z))"), funEnv + ("z" -> 15))
 
 evalLambda(s2l("(val dup (lambda (x) (+ x x)) (dup (dup 7)))"),funEnv)
 
@@ -414,11 +258,12 @@ evalLambda(s2l("""
      (fact 6)
   )
 """), funEnv)
+// This is like Y combinator that makes Y_F term, but we wrap self-application (x x) into a lambda so it does not get evaluated too soon, and we expand it afterwards
 
 evalLambda(s2l("""
-(val mkZ (lambda (f)
+(val mkZ (lambda (f) 
     (val comb (lambda (x)
-    		(f (lambda (v)
+    		(f (lambda (v)  
     			   ((x x) v)
     			  )
     		 )
@@ -434,7 +279,24 @@ evalLambda(s2l("""
   ((mkZ factorial) 6)))
 """), funEnv)
 
+// This works because factorial is never called recursively
+handle(evalLambda(s2l("""
+(val factorial
+  (lambda (x)
+    (if  (= x 0) 
+          1 
+          (* x (factorial (- x 1)))))  
+  (factorial 0)
+)
+"""), funEnv))
 
-
-
-
+// This lo longer works -- factorial is not known within body of factorial
+handle(evalLambda(s2l("""
+(val factorial
+  (lambda (x)
+    (if  (= x 0) 
+          1 
+          (* x (factorial (- x 1)))))  
+  (factorial 1)
+)
+"""), funEnv))
