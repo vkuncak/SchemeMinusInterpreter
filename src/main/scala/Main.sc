@@ -1,5 +1,8 @@
+
+
 object Main {
   type Data = Any
+
 
   // =================== Tokenizer (Lexer) ===============================
   
@@ -367,6 +370,9 @@ object Main {
   def main(args: Array[String]): Unit = {
   }
 }
+
 import Main._
-indent
-eval(string2lisp("((lambda (x) (+ x 5)) 42)"), globalEnv)
+string2lisp("(lambda (x) (+ (* x x) 1))")
+eval(string2lisp("((lambda (x) (+ (* x x) 1)) 7)"), globalEnv)
+evaluate("(def factorial (lambda (x) (if (= x 0) 1 (* x (factorial (- x 1))))) (factorial 6))")
+evaluate("(def map (lambda (f l) (if (null? l) nil (cons (f (car l)) (map f (cdr l))))) (map (lambda (x) (* x x)) (cons 1 (cons 2 (cons 3 nil)))))")
