@@ -1,0 +1,5 @@
+.dotty-ide-artifact
+.dotty-ide.json
+project/project/
+project/target/
+target/
