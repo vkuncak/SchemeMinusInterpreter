@@ -1,13 +1,13 @@
 
-object LabLikeInterpreter {
+object Eval {
   type Data = Any
 
-
-  // =================== Tokenizer (Lexer) ===============================
+  // =================== Tokenizer (Lexer) =====================
   
   class LispTokenizer(s: String) extends Iterator[String] {
     private var i = 0
-    private def isDelimiter(ch: Char) = ch <= ' ' || ch == '(' || ch == ')'
+    private def isDelimiter(ch: Char) = 
+      ch <= ' ' || ch == '(' || ch == ')'
     def hasNext: Boolean = {
       while (i < s.length && s.charAt(i) <= ' ') i += 1
       i < s.length
@@ -23,7 +23,7 @@ object LabLikeInterpreter {
       } else sys.error("premature end of input")
   }
 
-  // ============================ Parser ===============================
+  // ============================ Parser =======================
 
   def s2l(s:String) = string2lisp(s) // shorthand
   def string2lisp(s: String): Data = {
@@ -31,7 +31,8 @@ object LabLikeInterpreter {
     def parseExpr(token: String): Data = {
       if (token == "(") parseList
       else if (token == ")") sys.error("unbalanced parentheses")
-      else if (Character.isDigit(token.charAt(0))) Integer.parseInt(token)
+      else if (Character.isDigit(token.charAt(0))) 
+              Integer.parseInt(token)
       else Symbol(token)
     }
 
@@ -51,7 +52,7 @@ object LabLikeInterpreter {
       x.toString
   }
   
-    // Checked conversions ----------- -----------------------------------
+    // Checked conversions ----------- ---------------------------
 
   def asList(x: Data): List[Data] = x match {
     case xs: List[_] => xs
@@ -66,7 +67,7 @@ object LabLikeInterpreter {
   // We wrap lambdas inside a case class
   case class Lambda(f: List[Data] => Data)
 
-  // Environments -------------------------------------------------------
+  // Environments -----------------------------------------------
 
   abstract class Environment {
     def lookup(n: String): Data
@@ -74,12 +75,16 @@ object LabLikeInterpreter {
       def lookup(n: String): Data =
         if (n == name) v else Environment.this.lookup(n)
     }
-    def extendMulti(ps: List[String], vs: List[Data]): Environment = (ps, vs) match {
+    def extendMulti(ps: List[String], vs: List[Data]): Environment = 
+    (ps, vs) match {
       case (List(), List())         => this
-      case (p :: ps1, arg :: args1) => extend(p, arg).extendMulti(ps1, args1)
-      case _                        => sys.error("wrong number of arguments")
+      case (p :: ps1, arg :: args1) => 
+        extend(p, arg).extendMulti(ps1, args1)
+      case _                        => 
+      sys.error("wrong number of arguments")
     }
-    def extendRec(name: String, expr: Environment => Data) = new Environment {
+    def extendRec(name: String, expr: Environment => Data) = 
+    new Environment {
       def lookup(n: String): Data =
         if (n == name) expr(this)
         else Environment.this.lookup(n)
@@ -153,10 +158,10 @@ object LabLikeInterpreter {
         "def " + name // just confirm we got the def
       } else
         sys.error("trying to add global definition in some inner scope")
-    case 'def :: Symbol(name) :: body :: rest :: Nil => // GLOBAL or LOCAL
+    case 'def :: Symbol(name) :: body :: rest :: Nil => //GLOBAL or LOCAL
       if (env == globalEnv)
         globalEnv = env.extendRec(name, env1 => eval(body, env1))
-      eval(rest, env.extendRec(name, env1 => eval(body, env1))) // evaluate
+      eval(rest, env.extendRec(name, env1 => eval(body, env1))) 
     case 'quote :: y :: Nil =>
       y
     case 'lambda :: params :: body :: Nil =>
@@ -165,7 +170,8 @@ object LabLikeInterpreter {
       try {
         apply(eval(operator, env), operands map (x => eval(x, env)))
       } catch {
-        case ex: MatchError => sys.error("bad arguments for function " + operator)
+        case ex: MatchError => 
+          sys.error("bad args for function " + operator)
       }
   }
 
@@ -178,7 +184,7 @@ object LabLikeInterpreter {
     case Lambda(f) =>
       f(args)
     case _ =>
-      sys.error("application of non-function " + f + " to arguments " + args)
+     sys.error("application of non-function " + f + " to args " + args)
   }
 
   // Evaluation with tracing
@@ -199,26 +205,37 @@ object LabLikeInterpreter {
   }
   // Diagnostics---------------------------------------------------
   var curexp: Data = null
-  var trace: Boolean = false // set trace to false to turn off tracing
+  var trace: Boolean = false // use true to turn on tracing
   var indent: Int = 0
   val indentString =
-    "                                                              "
+  "                                                              "
   def evaluate(x: Data): Data = eval(x, globalEnv)
   def evaluate(s: String): Data = evaluate(string2lisp(s))
-  def main(args: Array[String]): Unit = {
-  }
-  def handle(e: => Any) = {
-    try (e) catch {
-        case _ => "Error during evaluation"
-    }
-  }
 }
 
-import LabLikeInterpreter._
+import Eval._
 
 // Examples for parsing and in general
 string2lisp("(lambda (x) (+ (* x x) 1))")
 eval(string2lisp("((lambda (x) (+ (* x x) 1)) 7)"), globalEnv)
-evaluate("(def factorial (lambda (x) (if (= x 0) 1 (* x (factorial (- x 1))))) (factorial 6))")
-evaluate("(def map (lambda (f l) (if (null? l) nil (cons (f (car l)) (map f (cdr l))))) (map (lambda (x) (* x x)) (cons 10 (cons 2 (cons 5 nil)))))")
+evaluate("""
+(def factorial (lambda (x) 
+  (if (= x 0) 
+      1 
+      (* x (factorial (- x 1))))) 
+(factorial 6))""")
+evaluate("""
+(def map (lambda (f l) 
+  (if (null? l) 
+    nil 
+    (cons (f (car l)) (map f (cdr l))))) 
+(map (lambda (x) (* x x)) (cons 10 (cons 2 (cons 5 nil)))))""")
     // '(1 2 3)
+
+evaluate("(def giveNumber (lambda (x) 42))")
+
+evaluate("(giveNumber 0)")
+
+evaluate("(def giveNumber (lambda (x) 72))")
+
+evaluate("(giveNumber 0)")

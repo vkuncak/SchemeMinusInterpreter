@@ -6,7 +6,5 @@
       "server": { "format": "JSON", "verbosity": "verbose" }
     }
   },
-  "editor.wordWrap": "wordWrapColumn",
-  "editor.wrappingIndent": "deepIndent",
-  "editor.wordWrapColumn": 60
+  "editor.wordWrap": "off",
 }
