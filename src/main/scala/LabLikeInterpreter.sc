@@ -1,5 +1,5 @@
 
-object Eval {
+object E {
   type Data = Any
 
   // =================== Tokenizer (Lexer) =====================
@@ -157,8 +157,8 @@ object Eval {
         globalEnv = env.extendRec(name, env1 => eval(body, env1))
         "def " + name // just confirm we got the def
       } else
-        sys.error("trying to add global definition in some inner scope")
-    case 'def :: Symbol(name) :: body :: rest :: Nil => //GLOBAL or LOCAL
+        sys.error("trying to add global def in some inner scope")
+    case 'def :: Symbol(name) :: body :: rest :: Nil =>
       if (env == globalEnv)
         globalEnv = env.extendRec(name, env1 => eval(body, env1))
       eval(rest, env.extendRec(name, env1 => eval(body, env1))) 
@@ -213,7 +213,7 @@ object Eval {
   def evaluate(s: String): Data = evaluate(string2lisp(s))
 }
 
-import Eval._
+import E._
 
 // Examples for parsing and in general
 string2lisp("(lambda (x) (+ (* x x) 1))")
